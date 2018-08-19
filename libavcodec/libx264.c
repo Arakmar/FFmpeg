@@ -159,7 +159,7 @@ static int X264_frame(AVCodecContext *ctx, AVPacket *pkt, const AVFrame *frame,
 
     x264_picture_init( &x4->pic );
     x4->pic.img.i_csp   = x4->params.i_csp;
-    if (x264_bit_depth > 8)
+    if (X264_BIT_DEPTH > 8)
         x4->pic.img.i_csp |= X264_CSP_HIGH_DEPTH;
     x4->pic.img.i_plane = avfmt2_num_planes(ctx->pix_fmt);
 
@@ -489,6 +489,9 @@ static av_cold int X264_init(AVCodecContext *avctx)
 
     x4->params.i_width          = avctx->width;
     x4->params.i_height         = avctx->height;
+#if X264_BUILD >= 153
+    x4->params.i_bitdepth       = av_pix_fmt_desc_get(avctx->pix_fmt)->comp[0].depth_minus1 + 1;
+#endif
     av_reduce(&sw, &sh, avctx->sample_aspect_ratio.num, avctx->sample_aspect_ratio.den, 4096);
     x4->params.vui.i_sar_width  = sw;
     x4->params.vui.i_sar_height = sh;
@@ -607,14 +610,33 @@ static const enum AVPixelFormat pix_fmts_8bit_rgb[] = {
     AV_PIX_FMT_NONE
 };
 
+static const enum AVPixelFormat pix_fmts_all[] = {
+    AV_PIX_FMT_YUV420P,
+    AV_PIX_FMT_YUVJ420P,
+    AV_PIX_FMT_YUV422P,
+    AV_PIX_FMT_YUV444P,
+    AV_PIX_FMT_YUV420P9,
+    AV_PIX_FMT_YUV444P9,
+    AV_PIX_FMT_YUV420P10,
+    AV_PIX_FMT_YUV422P10,
+    AV_PIX_FMT_YUV444P10,
+#ifdef X264_CSP_BGR
+    AV_PIX_FMT_BGR24,
+    AV_PIX_FMT_RGB24,
+#endif
+    AV_PIX_FMT_NONE
+};
+
 static av_cold void X264_init_static(AVCodec *codec)
 {
-    if (x264_bit_depth == 8)
+    if (X264_BIT_DEPTH == 8)
         codec->pix_fmts = pix_fmts_8bit;
-    else if (x264_bit_depth == 9)
+    else if (X264_BIT_DEPTH == 9)
         codec->pix_fmts = pix_fmts_9bit;
-    else if (x264_bit_depth == 10)
+    else if (X264_BIT_DEPTH == 10)
         codec->pix_fmts = pix_fmts_10bit;
+    else /* X264_BIT_DEPTH == 0 */
+        codec->pix_fmts = pix_fmts_all;
 }
 
 #define OFFSET(x) offsetof(X264Context, x)
